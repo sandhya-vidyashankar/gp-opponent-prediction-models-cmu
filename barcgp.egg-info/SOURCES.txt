@@ -1,0 +1,10 @@
+README.md
+setup.py
+barcgp/__init__.py
+barcgp/common_control.py
+barcgp/h2h_configs.py
+barcgp.egg-info/PKG-INFO
+barcgp.egg-info/SOURCES.txt
+barcgp.egg-info/dependency_links.txt
+barcgp.egg-info/requires.txt
+barcgp.egg-info/top_level.txt

@@ -1,0 +1,28 @@
+# Operation mode parameters
+operation_mode: "simulation"
+path_source: "csv"  # "csv" or "planner"ss
+path_filename: "/sim_ws/src/gp-opponent-prediction-models-cmu/mpc/data/waypoints.csv"
+path_topic: "rrt_path"
+
+# MPC Controller Parameters
+N: 20
+dt: 0.1
+dtk: 0.1
+v_min: -1.0 #Actually for a, just keeping name for convenience
+v_max: 0.2
+delta_min: -0.41
+delta_max: 0.41
+Q:
+  - 400 #75 #Qc
+  - 500 #500 #Ql 
+  - 30 #30 #Qs
+R:
+  - 2 #2 #acc
+  - 20 #20 #delta
+QN:
+  - 1.5
+  - 1.5
+  - 1.5
+wheelbase: 0.33
+nx: 6
+nu: 2

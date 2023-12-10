@@ -10,8 +10,9 @@ import casadi as ca
 import sys, os, pathlib
 
 sys.path.append(os.path.join(os.path.expanduser('~'), 'forces_pro_client'))
-import forcespro
-import forcespro.nlp
+# import forcespro
+# import forcespro.nlp
+import cvxpy
 
 from barcgp.dynamics.models.dynamics_models import CasadiDynamicsModel
 from barcgp.common.pytypes import VehicleState, VehicleActuation, VehiclePrediction
@@ -133,7 +134,7 @@ class MPCC_H2H_approx(AbstractController):
         self.options = None
         self.solver = None
         if name is None:
-            self.solver_name = 'MPCC_H2H_solver_forces_pro'
+            self.solver_name = 'MPCC_H2H_solver_cvxpy'
         else:
             self.solver_name = name
         self.state_input_prediction = VehiclePrediction()
@@ -472,8 +473,11 @@ class MPCC_H2H_approx(AbstractController):
             print('Found matching config file for solver', self.solver_name)
         else:
             self._build_solver()
-
-        self.solver = forcespro.nlp.Solver.from_directory(solver_dir)
+        opts = {'ipopt.print_level': 0, 'ipopt.print_time': 0}
+        self.opti.solver('ipopt', opts)
+        self.solver = self.opti.to_function('solver', [self.z], [self.u], ['z'], ['u'])
+        #forcespro.nlp.Solver.from_directory(solver_dir)
+        #TODO: figure how to replace this
 
     def _build_solver(self):
         def nonlinear_ineq(z, p):
@@ -597,10 +601,10 @@ class MPCC_H2H_approx(AbstractController):
                 l_cs_e = p[self.pvars.index('l_cs_e')]
 
             # Extract inputs
-            u_a = z[self.zvars.index('u_a')]
-            u_delta = z[self.zvars.index('u_delta')]
-            u_a_prev = z[self.zvars.index('u_a_prev')]
-            u_delta_prev = z[self.zvars.index('u_delta_prev')]
+            u_a = ca.MX.sym('u_a')#z[self.zvars.index('u_a')]
+            u_delta = ca.MX.sym('u_delta')#z[self.zvars.index('u_delta')]
+            u_a_prev = ca.MX.sym('u_a_prev')#z[self.zvars.index('u_a_prev')]
+            u_delta_prev = ca.MX.sym('u_delta_prev')#z[self.zvars.index('u_delta_prev')]
             u_a_dot = u_a - u_a_prev
             u_delta_dot = u_delta - u_delta_prev
 
@@ -609,8 +613,8 @@ class MPCC_H2H_approx(AbstractController):
                 ca.horzcat(kp1, kp2, kp3, kp4, kp5)), t_l, self.all_tracks)
             sin_psit = ca.sin(psit)
             cos_psit = ca.cos(psit)
-            e_cont = -sin_psit * (xt_hat - posx) + cos_psit * (yt_hat - posy)
-            e_lag = cos_psit * (xt_hat - posx) + sin_psit * (yt_hat - posy)
+            e_cont = -sin_psit * (xt_hat - posx) + cos_psit * (yt_hat - posy) #Error in following contour? Assumes opponent is doing properly??
+            e_lag = cos_psit * (xt_hat - posx) + sin_psit * (yt_hat - posy) #Error in following prev vehicle
 
             # if self.solver_name == 'mpcc_h2h_tv_lab_track':
             #     e_cont -= 0.2
@@ -671,10 +675,17 @@ class MPCC_H2H_approx(AbstractController):
             return ca.vertcat(integrated, z[self.zvars.index('theta')] + z[self.zvars.index('v_proj')] * self.dt,
                               q[self.zvars.index('s')], u)
 
+
+        # Forces model
+        self.model = forcespro.nlp.SymbolicModel(self.N)
+        
         # Forces model
         self.model = forcespro.nlp.SymbolicModel(self.N)
 
         # Number of parameters
+        self.model.nvar = self.n + self.d + self.d  # Stage variables z = [x, theta, u, u_prev]
+
+        # # Number of parameters
         self.model.nvar = self.n + self.d + self.d  # Stage variables z = [x, theta, u, u_prev]
 
         if self.slack:

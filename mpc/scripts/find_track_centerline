@@ -1,0 +1,30 @@
+import cv2
+import numpy as np
+
+def find_centerline(binary_map):
+    # Find contours in the binary map
+    contours, _ = cv2.findContours(binary_map, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Create a mask of the track region
+    mask = np.zeros_like(binary_map)
+    cv2.drawContours(mask, contours, -1, (255), thickness=cv2.FILLED)
+
+    # Calculate the centroid of the track region
+    M = cv2.moments(mask)
+    cx = int(M['m10'] / M['m00'])
+    cy = int(M['m01'] / M['m00'])
+
+    return cx, cy
+
+# Example usage
+if __name__ == "__main__":
+    # Load binary map (white pixels represent the track)
+    binary_map = cv2.imread('track_binary_map.png', cv2.IMREAD_GRAYSCALE)
+
+    # Apply threshold to create a binary map
+    _, binary_map = cv2.threshold(binary_map, 128, 255, cv2.THRESH_BINARY)
+
+    # Find the centerline
+    centerline = find_centerline(binary_map)
+
+    print("Centerline coordinates:", centerline)
